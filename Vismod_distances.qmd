@@ -1,0 +1,520 @@
+---
+title: "Visual models"
+author: "PP"
+format: html
+editor: visual
+---
+
+### **Set workspace and Libraries**
+
+```{r}
+#| context: setup
+#| include: false
+
+#set directory
+knitr::opts_knit$set(root.dir = normalizePath("WORKING DIRECTORY PATH"))
+
+#load libraries
+library(emmeans)
+library(stargazer)
+library(pavo)
+library(readr)
+library(dplyr)
+library(lme4)
+library(nlme)
+library(lmerTest)
+library(afex)
+library(multcomp)
+library(mapproj)
+```
+
+### Open .RData file "data.RData"
+
+`{load("../data.RData")}`
+
+#data 'specs' consists of raw imported spectral data
+
+Fix negative values to zero and average spectra by 2 subsequent measurements.
+
+```{r}
+specs <- procspec(specs, fixneg = 'zero')
+meanspecs <- aggspec(specs, by = 2, FUN = mean) 
+```
+
+### Subseting data
+
+Create labels for the time of the measurement "Age", and type of the nest box "BRIG" - bright, "DARK"
+
+**Age** [- M1 or M2]{.underline} - represent the nestlings age M1 - 8 days old; M2 - 12 days old.\
+**Exp** - [BF or DF]{.underline} - experimental group "Bright First" or "Dark First"\
+**Type** - [BRIG or DARK]{.underline} - nest box type when the measurement was taken "BRIG" - bright or "DARK" - dark\
+**Nestbox**- Three-digit number - nest box ID\
+**ID** - Seven-digit code - Individual nestling ID, ring number\
+**Region** - [P1, P2, P3, P4]{.underline} - beak's region P1 - Side, P2- Maxilla, P3 - Mandible, P4 - Palate
+
+```{r}
+Age <- (do.call(rbind, strsplit(names(meanspecs),"\\_"))[,1])
+Exp  <- do.call(rbind, strsplit(names(meanspecs),"\\_"))[,2]
+Type <- do.call(rbind, strsplit(names(meanspecs),"\\_"))[,3]
+Nestbox <- do.call(rbind, strsplit(names(meanspecs),"\\_"))[,4]
+ID <- do.call(rbind, strsplit(names(meanspecs),"\\_"))[,5]
+Region <- do.call(rbind, strsplit(names(meanspecs),"\\_"))[,6]
+```
+
+Now subset each type of nest box to perform vismodels and smooth:
+
+```{r}
+dark.specs <- subset(meanspecs, subset = Type == "DARK")
+dark.specs <- procspec(dark.specs, opt = "smooth", span = 0.2)
+
+bright.specs <- subset(meanspecs, subset = Type == "BRIG")
+bright.specs <- procspec(bright.specs, opt = "smooth", span = 0.2)
+
+```
+
+```{r}
+#Subset for each beak region:
+# Side <- subset(meanspecs, subset = Region == "P1")
+# Maxilla <- subset(meanspecs, subset = Region == "P2")
+# Mandible <- subset(meanspecs, subset = Region == "P3")
+# Palate <- subset(meanspecs, subset = Region == "P4")
+```
+
+## Visual models
+
+### Visual model for bright nest boxes
+
+```{r}
+is.rspec(bright.specs)
+vm_bright <- vismodel(bright.specs, visual = "avg.uv", illum = bright.luminant, qcatch="Qi", relative=F, achromatic = "bt.dc", trans = "bluetit", vonkries = F)
+```
+
+### Visual model for dark nest boxes
+
+```{r}
+is.rspec(dark.specs) 
+vm_dark <- vismodel(dark.specs, visual = "avg.uv", illum = dark.luminant, qcatch="Qi", relative=F, achromatic = "bt.dc", trans = "bluetit", vonkries = F) 
+```
+
+### Visual model for ideal illuminant
+
+```{r}
+is.rspec(meanspecs)
+vm_ideal <- vismodel(meanspecs, visual = "avg.uv", illum = "ideal", qcatch="Qi", relative=F, achromatic = "bt.dc", trans = "bluetit", vonkries = F)
+
+```
+
+# **Noise-weighted Distances**
+
+For Blue tit single cone ratio is 1, 1.92, 2.68, 2,70
+
+Subset age groups from VM's
+
+```{r}
+#| output: false
+vm_DarkA1 <- subset(vm_dark, "M1")
+vm_DarkA2 <- subset(vm_dark, "M2")
+vm_BrightA1 <- subset(vm_bright, "M1")
+vm_BrightA2 <- subset(vm_bright, "M2")
+vm_IdealA1<- subset(vm_ideal, "M1")
+vm_IdealA2 <- subset(vm_ideal, "M2")
+```
+
+## Distances for dark nest boxes
+
+### Age 8 days dark nest boxes:
+
+```{r}
+RegionsDarkA1 <- substr(rownames(vm_DarkA1), 24, 25)
+
+bdist_DarkA1 <-bootcoldist(vm_DarkA1, by= RegionsDarkA1, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+
+bdist_DarkA1
+
+
+
+```
+
+### Age 12 days dark nest boxes:
+
+```{r}
+RegionsDarkA2 <- substr(rownames(vm_DarkA2), 24, 25)
+
+bdist_DarkA2 <-bootcoldist(vm_DarkA2, by= RegionsDarkA2, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_DarkA2
+
+```
+
+### 8 + 12 days old dark nest boxes:
+
+```{r}
+RegionsDark <- substr(rownames(vm_dark), 24, 25)
+bdist_Dark <-bootcoldist(vm_dark, by= RegionsDark, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_Dark
+```
+
+### #PLOTS DARK
+
+```{r}
+
+#labels = c("Side-Maxilla", "Side-Mandible", "Side- Palate", "Maxilla - Mandible", "Maxilla - Palate", "Mandible - Palate"))
+
+par(mfrow = c(3,2))
+
+#DS A1
+plot(bdist_DarkA1[,1],
+     main = ("Dark 8 days old - Chromatic Contrast"),
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dS"
+)
+axis(1, at = 1:6, labels = rownames(bdist_DarkA1))
+segments(1:6,bdist_DarkA1[,2],1:6, bdist_DarkA1[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL A1
+plot(bdist_DarkA1[,4],
+     main = ("Dark 8 days old - Achromatic Contrast"),
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dL"
+)
+axis(1, at = 1:6, labels = rownames(bdist_DarkA1))
+segments(1:6, bdist_DarkA1[,5], 1:6, bdist_DarkA1[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+
+#DS A2
+plot(bdist_DarkA2[,1],
+     main = ("Dark 12 days old - Chromatic Contrast"),
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dS"
+)
+axis(1, at = 1:6, rownames(bdist_DarkA2))
+segments(1:6,bdist_DarkA2[,2],1:6, bdist_DarkA2[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+
+#DL A2
+plot(bdist_DarkA2[,4],
+     main = ("Dark 12 days old - Achromatic Contrast"),
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dL"
+)
+axis(1, at = 1:6, labels = rownames(bdist_DarkA2))
+segments(1:6, bdist_DarkA2[,5], 1:6, bdist_DarkA2[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+
+#DS all ages
+plot(bdist_Dark[,1],
+     main = ("Dark - Chromatic Contrast"),
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dS"
+)
+axis(1, at = 1:6, labels = rownames(bdist_Dark))
+segments(1:6,bdist_Dark[,2],1:6, bdist_Dark[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL all ages
+plot(bdist_Dark[,4],
+     main = ("Dark - Achromatic Contrast"),
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dL"
+)
+axis(1, at = 1:6, labels = rownames(bdist_Dark))
+segments(1:6,bdist_Dark[,5],1:6, bdist_Dark[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+```
+
+### 
+
+# Distances for bright nest boxes
+
+```{r}
+RegionsBrightA1 <- substr(rownames(vm_BrightA1), 24, 25)
+bdist_BrightA1 <-bootcoldist(vm_BrightA1, by= RegionsBrightA1, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_BrightA1
+
+RegionsBrightA2 <- substr(rownames(vm_BrightA2), 24, 25)
+bdist_BrightA2 <-bootcoldist(vm_BrightA2, by= RegionsBrightA2, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_BrightA2
+
+RegionsBright <- substr(rownames(vm_bright), 24, 25)
+bdist_Bright <-bootcoldist(vm_bright, by= RegionsBright, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_Bright
+```
+
+### #PLOTS BRIGHT
+
+```{r}
+par( mfrow = c(3,2))
+
+#DS A1
+
+plot(bdist_BrightA1[,1],
+     main = "Bright 8 days old - Chromatic Contrast",
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dS"
+)
+axis(1, at = 1:6, labels = rownames(bdist_BrightA1))
+segments(1:6,bdist_BrightA1[,2],1:6, bdist_BrightA1[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL A1
+plot(bdist_BrightA1[,4],
+     main = "Bright 8 days old - Achromatic contrast",
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dL"
+)
+axis(1, at = 1:6, labels = rownames(bdist_BrightA1))
+segments(1:6, bdist_BrightA1[,5], 1:6, bdist_BrightA1[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+
+# DS A2
+plot(bdist_BrightA2[,1],
+     main = "Bright 12 days old - Chromatic Contrast",
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dS"
+)
+axis(1, at = 1:6, labels = rownames(bdist_BrightA2))
+segments(1:6,bdist_BrightA2[,2],1:6, bdist_BrightA2[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL A2
+plot(bdist_BrightA2[,4],
+     main = "Bright 12 days old - Achromatic contrast",
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dL"
+)
+axis(1, at = 1:6, labels = rownames(bdist_BrightA2))
+segments(1:6, bdist_BrightA2[,5], 1:6, bdist_BrightA2[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+
+#DS ALL
+plot(bdist_Bright[,1],
+     main = "Bright - Chromatic contrast",
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dS"
+)
+axis(1, at = 1:6, labels = rownames(bdist_Bright))
+segments(1:6, bdist_Bright[,2],1:6, bdist_Bright[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+#DL ALL
+
+plot(bdist_Bright[,4],
+     main = "Bright - Achromatic contrast",
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "dL"
+)
+axis(1, at = 1:6, labels = rownames(bdist_Bright))
+segments(1:6, bdist_Bright[,5],1:6, bdist_Bright[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+```
+
+## Distances for ideal illuminant
+
+### Age 8 days ideal illuminant:
+
+```{r}
+regionsidm1 <- substr(rownames(vm_ideal), 24, 25)
+bdist_ideal_m1 <-bootcoldist(vm_ideal, by= regionsidm1, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_ideal_m1
+
+#DS
+plot(bdist_ideal_m1[,1],
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Chromatic contrast (dS)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal_m1))
+segments(1:6,bdist_ideal_m1[,2],1:6, bdist_ideal_m1[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL
+plot(bdist_ideal_m1[,4],
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Achromatic contrast (dL)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal_m1))
+segments(1:6, bdist_ideal_m1[,5], 1:6, bdist_ideal_m1[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+```
+
+### Age 12 days ideal illuminant:
+
+```{r}
+regionsidm2 <- substr(rownames(vm_ideal_m2), 24, 25)
+bdist_ideal_m2 <-bootcoldist(vm_ideal_m2, by= regionsidm2, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_ideal_m2
+
+#DS
+plot(bdist_ideal_m2[,1],
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Chromatic contrast (dS)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal_m2))
+segments(1:6,bdist_ideal_m2[,2],1:6, bdist_ideal_m2[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL
+plot(bdist_ideal_m2[,4],
+     ylim = c(0, 10),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Achromatic contrast (dL)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal_m2))
+segments(1:6, bdist_ideal_m2[,5], 1:6, bdist_ideal_m2[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+```
+
+### 8 +12 days old ideal illuminant:
+
+```{r}
+regionsid <- substr(rownames(vm_ideal), 24, 25)
+bdist_ideal <-bootcoldist(vm_ideal, by = regionsid, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_ideal
+
+#DS
+plot(bdist_ideal[,1],
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Chromatic contrast (dS)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal))
+segments(1:6, bdist_ideal[,2],1:6, bdist_ideal[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL
+plot(bdist_ideal[,4],
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Achromatic contrast (dL)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal))
+segments(1:6, bdist_ideal[,5],1:6, bdist_ideal[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+```
+
+### 8 +12 days old standard illuminant by experimental groups:
+
+```{r}
+regionsid <- substr(rownames(vm_ideal), 24, 25)
+bdist_ideal <-bootcoldist(vm_ideal, by = regionsid, n = c(1, 1.92, 2.68, 2.70), weber = 0.1, weber.achro = 0.1)
+bdist_ideal
+
+#DS
+plot(bdist_ideal[,1],
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Chromatic contrast (dS)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal))
+segments(1:6, bdist_ideal[,2],1:6, bdist_ideal[,3], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+
+#DL
+plot(bdist_ideal[,4],
+     ylim = c(0, 8),
+     pch = 10,
+     bg = 1,
+     cex = 2,
+     xaxt = "n",
+     xlab = "Centroid comparison",
+     ylab = "Achromatic contrast (dL)"
+)
+axis(1, at = 1:6, labels = rownames(bdist_ideal))
+segments(1:6, bdist_ideal[,5],1:6, bdist_ideal[,6], lwd = 2) # Add CI's
+abline(h = 1, lty = 3, lwd = 2) # Add a 'threshold' line at dS = 1
+```
