@@ -15,17 +15,7 @@ editor: visual
 knitr::opts_knit$set(root.dir = normalizePath("WORKING DIRECTORY PATH"))
 
 #load libraries
-library(emmeans)
-library(stargazer)
-library(pavo)
-library(readr)
-library(dplyr)
-library(lme4)
-library(nlme)
-library(lmerTest)
-library(afex)
-library(multcomp)
-library(mapproj)
+ 
 ```
 
 ### Open .RData file "data.RData"
