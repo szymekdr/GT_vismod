@@ -1,0 +1,1033 @@
+---
+toc: true
+toc-depth: 3
+title: "Mixed model analysis - summary Bright and Dark (REALL ILLUMINANT)"
+format: html
+editor: visual
+---
+
+Open .RData file "data.RData"
+
+```{r}
+load(../data.RData)
+
+```
+
+# Mixed models analysis
+
+```{r}
+#| echo: false
+#| output: false
+
+#load libraries
+library(emmeans)
+library(scales)
+library(stargazer)
+library(pavo)
+library(readr)
+library(dplyr)
+library(lme4)
+library(nlme)
+library(lmerTest)
+library(afex)
+library(multcomp)
+library(mapproj)
+library(ggplot2)
+library(patchwork)
+library(modelsummary)
+```
+
+#### Load dark luminant for further analysis:
+
+```{r}
+#Locate your folder with single file containing mean dark illuminant spectrum - "dark_lum.csv"
+setwd("../dark illuminant/")
+
+library(readr)
+dark_lum <- read_delim("C:/Users/pawel/OneDrive - Uniwersytet Jagielloński/GT/Article/Revision/dark_lum.csv", 
+                       delim = ";", escape_double = FALSE, col_types = cols(wl = col_number(), 
+         dark = col_number()), trim_ws = TRUE)
+
+
+dark.luminant <- as.rspec(dark_lum) 
+plot(dark.luminant, type = "overlay")
+dark.luminant<- procspec(fixneg = "zero", dark.luminant, opt = "smooth", span = 0.05)
+plot(dark.luminant, type = "overlay")
+
+getspec(
+  ext = "csv",
+  lim = c(300, 700),
+  decimal = ".",
+  sep = "space",
+  subdir = FALSE,
+  subdir.names = FALSE,
+  ignore.case = TRUE)
+
+#smoothing dark.luminant
+
+dark.lum <- dark.luminant
+
+dark.luminant <- procspec(dark.luminant, fixneg = 'zero')
+plot(dark.luminant, type = "overlay")
+
+
+```
+
+#### Load bright luminant for further analysis:
+
+```{r}
+#Locate your folder with single file containing mean bright illuminant spectrum - "bright_lum.csv"
+setwd("../bright illuminant")
+
+library(readr)
+bright_lum <- read_delim("C:/Users/pawel/OneDrive - Uniwersytet Jagielloński/GT/Article/Revision/bright_lum.csv", 
+    delim = ";", escape_double = FALSE, col_types = cols(wl = col_number(), 
+        bright = col_number()), trim_ws = TRUE)
+
+
+#smoothing bright.luminant
+bright.luminant <- as.rspec(bright_lum)
+bright.luminant <- procspec(fixneg = "zero", bright.luminant, opt = "smooth", span = 0.05)
+
+plot(bright.luminant, type = "overlay")
+
+
+```
+
+#### Create plot with two luminants and 95%CI
+
+```{r}
+
+
+luminant_plot <- ggplot() +
+  geom_line(data = graph_sqrt9_zaokr, aes(x = wl, y = mean_br, color = "Bright"), linewidth = 1) +
+  geom_line(data = graph_sqrt9_zaokr, aes(x = wl, y = mean_d, color = "Dark"), linewidth = 1) +
+  geom_ribbon(data = graph_sqrt9_zaokr, aes(x = wl, ymin = b_CIL, ymax = b_CIU, fill = "Bright 95% CI"), alpha = 0.4) +
+  geom_ribbon(data = graph_sqrt9_zaokr, aes(x = wl, ymin = d_CIL, ymax = d_CIU, fill = "Dark 95% CI"), alpha = 0.4) +
+  scale_color_manual(values = c("Bright" = "turquoise2", "Dark" = "coral1")) +
+  scale_fill_manual(values = c("Bright 95% CI" = "turquoise2", "Dark 95% CI" = "coral1")) +
+  ylab(expression('Irradiance ('*mu*'Mol/s/m'^2*'/nm)')) + 
+  xlab('Wavelength (nm)') +
+  theme_bw() + 
+  theme(text = element_text(size = 14), legend.title = element_blank())
+luminant_plot
+```
+
+(In this document I have omitted the analysis of distances. It is unnecessary here but if so, remember to use bootcol.distances with Blue tit single cone ratio is **1, 1.92, 2.68, 2,70)**
+
+# DB
+
+## Visual models
+
+### Visual model for bright nest boxes
+
+```{r}
+is.rspec(bright.specs)
+vm_bright <- vismodel(bright.specs, visual = "avg.uv", illum = bright.luminant, qcatch="Qi", relative=T, achromatic = "bt.dc", trans = "bluetit", vonkries = F)
+```
+
+### Visual model for dark nest boxes
+
+```{r}
+is.rspec(dark.specs) 
+vm_dark <- vismodel(dark.specs, visual = "avg.uv", illum = dark.luminant, qcatch="Qi", relative=F, achromatic = "bt.dc", trans = "bluetit", vonkries = F) 
+```
+
+### TCS DB - Dark and Bright illuminant
+
+```{r}
+vm_DB <- bind_rows(vm_dark, vm_bright)
+
+write.csv(vm_DB, file = "C:/Users/pawel/OneDrive - Uniwersytet Jagielloński/GT/Article/Revision/Revised_data/vm_DB.csv")
+
+TCS_DB <-colspace(vm_DB,
+              space = c("tcs"))
+write.csv(TCS_DB, file = "C:/Users/pawel/OneDrive - Uniwersytet Jagielloński/GT/Article/Revision/Revised_data/TCS_DB.csv")
+```
+
+*Write TCS_DB as a .csv and add data with spectral variables S9, S1U, H4 etc. from spec_var.csv database, all saved as a TCS_DB_data.csv*
+
+or
+
+```{r}
+library(readxl)
+TCS_DB_data <- read_excel("Revised_data/TCS_DB_data.xlsx", 
+    col_types = c("text", "text", "text", 
+        "text", "numeric", "text", "text", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "text", "text", 
+        "numeric", "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric"))
+View(TCS_DB_data)
+
+
+
+
+#add new variable TypeAge
+TCS_DB_data <- TCS_DB_data %>%
+  mutate(TypeAge = paste0(Type, Age))
+#scale S9
+TCS_DB_data <- TCS_DB_data %>%
+
+  mutate(h.theta_s = scale(h.theta),
+         h.phi_s = scale(h.phi),
+         r.achieved_s = scale(r.achieved),
+         B1_s = scale(B1), 
+         H4_s = scale(H4),
+         S9_s = scale(S9), 
+         S5_s = scale(S5),
+         lum_s = scale(lum))
+
+
+```
+
+mr - (m)odel includes (r)eal illumiant - bright and dark illuminant (depending on experimental group)
+
+Dependent variables in models:
+
+mr1 - h.theta_s\
+mr2 - h.phi_s\
+mr3 - r.achieved_s\
+mr4 - lum_S\
+mr5 - S9_s\
+
+```{r}
+TCS_DB_data$Individual <- as.factor(TCS_DB_data$Individual)
+TCS_DB_data$Type <- as.factor(TCS_DB_data$Type)
+TCS_DB_data$Nestbox <- as.factor(TCS_DB_data$Nestbox)
+TCS_DB_data$Age <- as.factor(TCS_DB_data$Age)
+TCS_DB_data$Region <- as.factor(TCS_DB_data$Region)
+TCS_DB_data$TypeAge <- as.factor(TCS_DB_data$TypeAge)
+```
+
+```{r}
+TCS_DB_data.side <- subset(TCS_DB_data, Region == "Side")
+TCS_DB_data.maxi <- subset(TCS_DB_data, Region == "Maxilla")
+TCS_DB_data.mand <- subset(TCS_DB_data, Region == "Mandible")
+TCS_DB_data.pala <- subset(TCS_DB_data, Region == "Palate")
+```
+
+# mr1 - h.theta
+
+```{r}
+#| echo: false
+#| output: false
+
+TCS_DB_data.maxi$Type <- relevel(TCS_DB_data.maxi$Type, ref = "Dark")
+TCS_DB_data.pala$Type <- relevel(TCS_DB_data.pala$Type, ref = "Dark")
+TCS_DB_data.side$Type <- relevel(TCS_DB_data.side$Type, ref = "Dark")
+TCS_DB_data.mand$Type <- relevel(TCS_DB_data.mand$Type, ref = "Dark")
+
+mr1.side <- lmer(h.theta_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr1.maxi <- lmer(h.theta_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr1.mand <- lmer(h.theta_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr1.pala <- lmer(h.theta_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+summary(mr1.side)
+class(mr1.side) <- "lmerMod"
+class(mr1.maxi) <- "lmerMod"
+class(mr1.mand) <- "lmerMod" 
+class(mr1.pala) <- "lmerMod"
+```
+
+```{r}
+#| echo: false
+h.theta_s.sum <- stargazer(mr1.side, mr1.maxi, mr1.mand, mr1.pala, digits = 2, type = "text", style = "default", title = "h.theta_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
+```
+
+## Side
+
+```{r}
+summary(mr1.side)
+
+rmr1.side.TypeAge <-lmer(h.theta_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr1.side.EM <- emmeans(mr1.side.TypeAge, ~TypeAge)
+
+plot.mr1.side <- plot(mr1.side.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.theta_s Side", plotit = F)
+
+head(plot.mr1.side)
+plot.mr1.side$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr1.side$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr1.side$group1 <- c("A1", "A2", "A1" ,"A2")
+
+
+rsidetheta <- ggplot(plot.mr1.side, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  ggtitle("Flanges") + 
+  geom_hline(yintercept = plot.mr1.side[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") + 
+  geom_point(size = 4)+
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("Hue") + xlab("Group")  +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12" , "Bright\nAge:12"))
+
+
+
+
+
+
+rsidetheta
+
+mr1.side.contr <- contrast(mr1.side.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr1.side.contr) ##output z CI
+
+```
+
+## Maxilla
+
+```{r}
+summary(mr1.maxi)
+mr1.maxi.TypeAge <-lmer(h.theta_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr1.maxi.EM <- emmeans(mr1.maxi.TypeAge, ~TypeAge)
+
+plot.mr1.maxi <- plot(mr1.maxi.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.theta_s Maxilla", plotit = F)
+
+head(plot.mr1.maxi)
+plot.mr1.maxi$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr1.maxi$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr1.maxi$group1 <- c("A1", "A2", "A1" ,"A2")
+
+rmaxitheta <- ggplot(plot.mr1.maxi, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  ggtitle("Maxilla") + 
+  geom_hline(yintercept = plot.mr1.maxi[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") + 
+  geom_point(size = 4)+
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  ylab ("h.theta_s Maxilla") + xlab("Group")  +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12" , "Bright\nAge:12"))
+
+rmaxitheta
+
+
+mr1.maxi.contr <- contrast(mr1.maxi.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr1.maxi.contr) ##output z CI
+```
+
+## Mandible
+
+```{r}
+summary(mr1.mand)
+mr1.mand.TypeAge <-lmer(h.theta_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr1.mand.EM <- emmeans(mr1.mand.TypeAge, ~TypeAge)
+
+plot.mr1.mand <- plot(mr1.mand.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.theta_s mand", plotit = F)
+
+head(plot.mr1.mand)
+plot.mr1.mand$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr1.mand$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr1.mand$group1 <- c("A1", "A2", "A1" ,"A2")
+rmandtheta <- ggplot(plot.mr1.mand, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  ggtitle("Mandible") + 
+  geom_hline(yintercept = plot.mr1.mand[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") + 
+  geom_point(size = 4)+
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  ylab ("h.theta_s Mandible") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12")) + scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.1,
+                                 decimal.mark = ','))
+
+rmandtheta
+
+mr1.mand.contr <- contrast(mr1.mand.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr1.mand.contr) ##output z CI
+summary(mr1.mand.contr)
+```
+
+## Palate
+
+```{r}
+summary(mr1.pala)
+mr1.pala.TypeAge <-lmer(h.theta_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+mr1.pala.EM <- emmeans(mr1.pala.TypeAge, ~TypeAge)
+
+plot.mr1.pala <- plot(mr1.pala.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.theta_s pala", plotit = F)
+
+head(plot.mr1.pala)
+plot.mr1.pala$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr1.pala$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr1.pala$group1 <- c("A1", "A2", "A1" ,"A2")
+rpalatheta <- ggplot(plot.mr1.pala, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  ggtitle("Palate") + 
+  geom_hline(yintercept = plot.mr1.pala[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  ylab ("h.theta_s Palate") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+
+rpalatheta
+
+mr1.pala.contr <- contrast(mr1.pala.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+confint(mr1.pala.contr) ##output z CI
+```
+
+# mr2 - h.phi
+
+```{r}
+#| echo: false
+#| output: false
+mr2.side <- lmer(h.phi_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr2.maxi <- lmer(h.phi_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr2.mand <- lmer(h.phi_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr2.pala <- lmer(h.phi_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+
+class(mr2.side) <- "lmerMod"
+class(mr2.maxi) <- "lmerMod"
+class(mr2.mand) <- "lmerMod"
+class(mr2.pala) <- "lmerMod"
+```
+
+```{r}
+#| echo: false
+h.phi_s.sum <- stargazer(mr2.side, mr2.maxi, mr2.mand, mr2.pala, digits = 2, type = "text", style = "default", title = "h.phi_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
+```
+
+## Side
+
+```{r}
+summary(mr2.side)
+mr2.side.TypeAge <-lmer(h.phi_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr2.side.EM <- emmeans(mr2.side.TypeAge, ~TypeAge)
+
+plot.mr2.side <- plot(mr2.side.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.phi_s side", plotit = F)
+
+head(plot.mr2.side)
+plot.mr2.side$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr2.side$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr2.side$group1 <- c("A1", "A2", "A1" ,"A2")
+rsidephi <- ggplot(plot.mr2.side, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr2.side[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("h.phi_s Side") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+rsidephi
+
+
+
+
+
+mr2.side.contr <- contrast(mr2.side.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr2.side.contr) ##output z CI
+
+```
+
+## Maxilla
+
+```{r}
+summary(mr2.maxi)
+mr2.maxi.TypeAge <-lmer(h.phi_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr2.maxi.EM <- emmeans(mr2.maxi.TypeAge, ~TypeAge)
+
+
+plot.mr2.maxi <- plot(mr2.maxi.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.phi_s Maxilla", plotit = F)
+
+head(plot.mr2.maxi)
+plot.mr2.maxi$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr2.maxi$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr2.maxi$group1 <- c("A1", "A2", "A1" ,"A2")
+rmaxiphi <- ggplot(plot.mr2.maxi, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr2.maxi[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("h.phi_s Maxilla") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12")) + scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.1,
+                                 decimal.mark = '.'))
+
+rmaxiphi
+
+mr2.maxi.contr <- contrast(mr2.maxi.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr2.maxi.contr) ##output z CI
+```
+
+## Mandible
+
+```{r}
+summary(mr2.mand)
+mr2.mand.TypeAge <-lmer(h.phi_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr2.mand.EM <- emmeans(mr2.mand.TypeAge, ~TypeAge)
+plot.mr2.mand <- plot(mr2.mand.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.phi_s mand", plotit = F)
+
+head(plot.mr2.mand)
+plot.mr2.mand$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr2.mand$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr2.mand$group1 <- c("A1", "A2", "A1" ,"A2")
+rmandphi <- ggplot(plot.mr2.mand, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr2.mand[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("h.phi_s Mandible") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12")) + scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.1,
+                                 decimal.mark = '.'))
+
+rmandphi
+
+mr2.mand.contr <- contrast(mr2.mand.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr2.mand.contr) ##output z CI
+```
+
+## Palate
+
+```{r}
+summary(mr2.pala)
+mr2.pala.TypeAge <-lmer(h.phi_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+mr2.pala.EM <- emmeans(mr2.pala.TypeAge, ~TypeAge)
+
+plot.mr2.pala <- plot(mr2.pala.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans h.phi_s pala", plotit = F)
+
+head(plot.mr2.pala)
+plot.mr2.pala$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr2.pala$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr2.pala$group1 <- c("A1", "A2", "A1" ,"A2")
+rpalaphi <- ggplot(plot.mr2.pala, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr2.pala[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("h.phi_s Palate") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+rpalaphi
+
+mr2.pala.contr <- contrast(mr2.pala.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+confint(mr2.pala.contr) ##output z CI
+```
+
+# mr3 - r.achieved
+
+```{r}
+#| echo: false
+#| output: false
+mr3.side <- lmer( r.achieved_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr3.maxi <- lmer( r.achieved_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr3.mand <- lmer( r.achieved_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr3.pala <- lmer( r.achieved_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+
+class(mr3.side) <- "lmerMod"
+class(mr3.maxi) <- "lmerMod"
+class(mr3.mand) <- "lmerMod"
+class(mr3.pala) <- "lmerMod"
+```
+
+```{r}
+#| echo: false
+ r.achieved_s.sum <- stargazer(mr3.side, mr3.maxi, mr3.mand, mr3.pala, digits = 2, type = "text", style = "default", title = " r.achieved_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
+```
+
+## Side
+
+```{r}
+summary(mr3.side)
+mr3.side.TypeAge <-lmer( r.achieved_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr3.side.EM <- emmeans(mr3.side.TypeAge, ~TypeAge)
+
+
+plot.mr3.side <- plot(mr3.side.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans  r.achieved_s Side", plotit = F)
+
+head(plot.mr3.side)
+plot.mr3.side$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr3.side$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr3.side$group1 <- c("A1", "A2", "A1" ,"A2")
+rsideach <- ggplot(plot.mr3.side, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  scale_y_continuous(labels = number_format(accuracy = 0.1)) +
+  geom_hline(yintercept = plot.mr3.side[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("r.achieved_s Side") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+rsideach
+
+mr3.side.contr <- contrast(mr3.side.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr3.side.contr) ##output z CI
+
+```
+
+## Maxilla
+
+```{r}
+summary(mr3.maxi)
+mr3.maxi.TypeAge <-lmer( r.achieved_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr3.maxi.EM <- emmeans(mr3.maxi.TypeAge, ~TypeAge)
+
+
+plot.mr3.maxi <- plot(mr3.maxi.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans  r.achieved_s Maxilla", plotit = F)
+
+head(plot.mr3.maxi)
+plot.mr3.maxi$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr3.maxi$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr3.maxi$group1 <- c("A1", "A2", "A1" ,"A2")
+rmaxiach <- ggplot(plot.mr3.maxi, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr3.maxi[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("r.achieved_s Maxilla") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12")) + scale_y_continuous(  labels = scales::number_format(accuracy = 0.1,
+                                  decimal.mark = ','))
+
+rmaxiach
+
+mr3.maxi.contr <- contrast(mr3.maxi.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr3.maxi.contr) ##output z CI
+```
+
+## Mandible
+
+```{r}
+summary(mr3.mand)
+mr3.mand.TypeAge <-lmer( r.achieved_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr3.mand.EM <- emmeans(mr3.mand.TypeAge, ~TypeAge)
+
+
+plot.mr3.mand <- plot(mr3.mand.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans  r.achieved_s Mandible", plotit = F)
+
+head(plot.mr3.mand)
+plot.mr3.mand$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr3.mand$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr3.mand$group1 <- c("A1", "A2", "A1" ,"A2")
+rmandach <- ggplot(plot.mr3.mand, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr3.mand[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("r.achieved_s Mandible") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+                                
+
+rmandach
+
+mr3.mand.contr <- contrast(mr3.mand.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr3.mand.contr) ##output z CI
+```
+
+## Palate
+
+```{r}
+summary(mr3.pala)
+mr3.pala.TypeAge <-lmer( r.achieved_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+mr3.pala.EM <- emmeans(mr3.pala.TypeAge, ~TypeAge)
+
+
+plot.mr3.pala <- plot(mr3.pala.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans  r.achieved_s pala", plotit = F)
+
+head(plot.mr3.pala)
+plot.mr3.pala$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr3.pala$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr3.pala$group1 <- c("A1", "A2", "A1" ,"A2")
+rpalaach <- ggplot(plot.mr3.pala, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  scale_y_continuous(labels = number_format(accuracy = 0.1)) +
+  geom_hline(yintercept = plot.mr3.pala[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("r.achieved_s Palate") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+rpalaach
+
+mr3.pala.contr <- contrast(mr3.pala.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+confint(mr3.pala.contr) ##output z CI
+```
+
+# mr4 - lum_s
+
+```{r}
+#| echo: false
+#| output: false
+mr4.side <- lmer(lum_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr4.maxi <- lmer(lum_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr4.mand <- lmer(lum_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr4.pala <- lmer(lum_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+
+class(mr4.side) <- "lmerMod"
+class(mr4.maxi) <- "lmerMod"
+class(mr4.mand) <- "lmerMod"
+class(mr4.pala) <- "lmerMod"
+```
+
+```{r}
+#| echo: false
+lum_s.sum <- stargazer(mr4.side, mr4.maxi, mr4.mand, mr4.pala, digits = 2,  type = "text", style = "default", title = "lum_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
+```
+
+## Side
+
+```{r}
+summary(mr4.side)
+mr4.side.TypeAge <-lmer(lum_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr4.side.EM <- emmeans(mr4.side.TypeAge, ~TypeAge)
+
+plot.mr4.side <- plot(mr4.side.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans lum Side", plotit = F)
+
+head(plot.mr4.side)
+
+plot.mr4.side$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr4.side$group <- c("BF", "DF", "DF" ,"BF")
+
+
+plot.mr4.side$group1 <- c("A1", "A2", "A1" ,"A2")
+rsidelum <- ggplot(plot.mr4.side, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group)) +
+  geom_hline(yintercept = plot.mr4.side[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) + theme(text = element_text(size = 12)) +
+  theme_bw() + theme(legend.position = "none") +
+  ylab("Luminance") + xlab("Group")
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+
+
+
+mr4.side.contr <- contrast(mr4.side.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr4.side.contr) ##output z CI
+
+```
+
+## Maxilla
+
+```{r}
+summary(mr4.maxi)
+mr4.maxi.TypeAge <-lmer(lum_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr4.maxi.EM <- emmeans(mr4.maxi.TypeAge, ~TypeAge)
+
+plot.mr4.maxi <- plot(mr4.maxi.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans lum Maxilla", plotit = F)
+
+head(plot.mr4.maxi)
+
+plot.mr4.maxi$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr4.maxi$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr4.maxi$group1 <- c("A1", "A2", "A1" ,"A2")
+
+rmaxilum <- ggplot(plot.mr4.maxi, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr4.maxi[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) + theme(text = element_text(size = 12)) +
+  theme_bw() + theme(legend.position = "none", axis.title.y = element_blank()) +
+  ylab ("") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"), )
+
+
+rsidelum <- ggplot(plot.mr4.side, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group)) +
+  geom_hline(yintercept = plot.mr4.side[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) + theme(text = element_text(size = 12)) +
+  theme_bw() + theme(legend.position = "none") +
+  ylab("Luminance") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+
+
+
+
+mr4.maxi.contr <- contrast(mr4.maxi.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr4.maxi.contr) ##output z CI
+```
+
+## Mandible
+
+```{r}
+summary(mr4.mand)
+mr4.mand.TypeAge <-lmer(lum_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr4.mand.EM <- emmeans(mr4.mand.TypeAge, ~TypeAge)
+
+plot.mr4.mand <- plot(mr4.mand.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans lum Mandible", plotit = F)
+
+head(plot.mr4.mand)
+
+plot.mr4.mand$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr4.mand$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr4.mand$group1 <- c("A1", "A2", "A1" ,"A2")
+rmandlum <- ggplot(plot.mr4.mand, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr4.mand[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) + theme(text = element_text(size = 12)) +
+  theme_bw() +theme(legend.position = "none", axis.title.y = element_blank()) +
+  ylab ("") + xlab("") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+mr4.mand.contr <- contrast(mr4.mand.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr4.mand.contr) ##output z CI
+```
+
+## Palate
+
+```{r}
+summary(mr4.pala)
+mr4.pala.TypeAge <-lmer(lum_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+mr4.pala.EM <- emmeans(mr4.pala.TypeAge, ~TypeAge)
+
+plot.mr4.pala <- plot(mr4.pala.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans lum Palate", plotit = F)
+
+head(plot.mr4.pala)
+
+plot.mr4.pala$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr4.pala$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr4.pala$group1 <- c("A1", "A2", "A1" ,"A2")
+rpalalum <- ggplot(plot.mr4.pala, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr4.pala[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) + theme(text = element_text(size = 12)) +
+  theme_bw() + theme(legend.position = "none", axis.title.y = element_blank()) +
+  ylab ("") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+
+mr4.pala.contr <- contrast(mr4.pala.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+confint(mr4.pala.contr) ##output z CI
+```
+
+# mr5 - S9_s
+
+```{r}
+#| echo: false
+#| output: false
+mr5.side <- lmer(S9_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr5.maxi <- lmer(S9_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr5.mand <- lmer(S9_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr5.pala <- lmer(S9_s ~ Type * Age + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+
+class(mr5.side) <- "lmerMod"
+class(mr5.maxi) <- "lmerMod"
+class(mr5.mand) <- "lmerMod"
+class(mr5.pala) <- "lmerMod"
+```
+
+```{r}
+#| echo: false
+S9_s.sum <- stargazer(mr5.side, mr5.maxi, mr5.mand,  mr5.pala, type = "text", style = "default", title = "S9_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
+```
+
+## Side
+
+```{r}
+summary(mr5.side)
+mr5.side.TypeAge <-lmer(S9_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.side)
+mr5.side.EM <- emmeans(mr5.side.TypeAge, ~TypeAge)
+
+plot.mr5.side <- plot(mr5.side.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans S9 Side", plotit = F)
+
+head(plot.mr5.side)
+
+plot.mr5.side$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr5.side$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr5.side$group1 <- c("A1", "A2", "A1" ,"A2")
+
+rsideS9 <- ggplot(plot.mr5.side, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  scale_y_continuous(labels = number_format(accuracy = 0.1)) +
+  geom_hline(yintercept = plot.mr5.side[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("S9 Side") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12")) + scale_y_continuous(labels = scales::number_format(accuracy = 0.1,
+                             decimal.mark = ','))
+
+mr5.side.contr <- contrast(mr5.side.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr5.side.contr) ##output z CI
+
+```
+
+## Maxilla
+
+```{r}
+summary(mr5.maxi)
+mr5.maxi.TypeAge <-lmer(S9_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.maxi)
+mr5.maxi.EM <- emmeans(mr5.maxi.TypeAge, ~TypeAge)
+
+plot.mr5.maxi <- plot(mr5.maxi.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans S9 Maxilla", plotit = F)
+
+head(plot.mr5.maxi)
+
+plot.mr5.maxi$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr5.maxi$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr5.maxi$group1 <- c("A1", "A2", "A1" ,"A2")
+rmaxiS9 <- ggplot(plot.mr5.maxi, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr5.maxi[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  ylab ("S9 Maxilla") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+mr5.maxi.contr <- contrast(mr5.maxi.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr5.maxi.contr) ##output z CI
+```
+
+## Mandible
+
+```{r}
+summary(mr5.mand)
+mr5.mand.TypeAge <-lmer(S9_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.mand)
+mr5.mand.EM <- emmeans(mr5.mand.TypeAge, ~TypeAge)
+
+
+plot.mr5.mand <- plot(mr5.mand.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans S9 Mandible", plotit = F)
+
+head(plot.mr5.mand)
+
+plot.mr5.mand$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr5.mand$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr5.mand$group1 <- c("A1", "A2", "A1" ,"A2")
+rmandS9 <- ggplot(plot.mr5.mand, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr5.mand[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("S9 Mandible") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+mr5.mand.contr <- contrast(mr5.mand.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+
+confint(mr5.mand.contr) ##output z CI
+```
+
+## Palate
+
+```{r}
+summary(mr5.pala)
+mr5.pala.TypeAge <-lmer(S9_s ~ TypeAge + (1|Individual) + (1|Nestbox), data = TCS_DB_data.pala)
+mr5.pala.EM <- emmeans(mr5.pala.TypeAge, ~TypeAge)
+
+plot.mr5.pala <- plot(mr5.pala.EM, horizontal = FALSE, colors = "darkgreen", xlab = "emmeans S9 Palate", plotit = F)
+
+head(plot.mr5.pala)
+
+plot.mr5.pala$TypeAge <- c("Bright\nAge:8", "Bright\nAge:12", "Dark\nAge:8", "Dark\nAge:12")
+plot.mr5.pala$group <- c("BF", "DF", "DF" ,"BF")
+plot.mr5.pala$group1 <- c("A1", "A2", "A1" ,"A2")
+rpalaS9 <- ggplot(plot.mr5.pala, aes(x = TypeAge, y = the.emmean, ymin =  lower.CL, ymax = upper.CL, color = group))  +
+  geom_hline(yintercept = plot.mr5.pala[3, "the.emmean"], alpha = 0.5, lty = 2) +
+  geom_line(aes(group = group1), color = "black") +
+  geom_point(size = 4) +
+  geom_errorbar(lwd = 1, width = 0) +
+  theme_bw() + theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  ylab ("S9 Palate") + xlab("Group") +
+  scale_x_discrete(limits = c("Dark\nAge:8", "Bright\nAge:8", "Dark\nAge:12","Bright\nAge:12"))
+
+mr5.pala.contr <- contrast(mr5.pala.EM, list(B1_D2 = c(-1,0,0,1), 
+                                            D1_B2 = c(0,1,-1,0),
+                                            B1_D1 = c(-1,0,1,0), 
+                                            B2_D2 = c(0,1,0,-1))) 
+confint(mr5.pala.contr) ##output z CI
+```
