@@ -40,7 +40,7 @@ library(modelsummary)
 ```
 
 ```{r}
-load("../data.RData")
+#load("../data.RData")
 
 #add new variable TypeAge
 TCS_IDEAL_data <- TCS_IDEAL_data %>%
@@ -119,7 +119,7 @@ class(mi1.pala) <- "lmerMod"
 
 ```{r}
 #| echo: false
-h.theta_s.sum <- stargazer(mi1.side, mi1.mand, mi1.maxi, mi1.pala, digits = 2, type = "text", style = "default", title = "h.theta_s Mixed models (Estimate + (Std. Error)", column.labels = c("Flanges", "Maxilla", "Mandible", "Palate"))
+h.theta_s.sum <- stargazer(mi1.side, mi1.maxi, mi1.mand, mi1.pala, digits = 2, type = "text", style = "default", title = "h.theta_s Mixed models (Estimate + (Std. Error)", column.labels = c("Flanges", "Maxilla", "Mandible", "Palate"))
 ```
 
 ## Side
@@ -448,7 +448,7 @@ class(mi3.pala) <- "lmerMod"
 
 ```{r}
 #| echo: false
-r.achieved_s.sum <- stargazer(mi3.side, mi3.mand, mi3.maxi, mi3.pala, digits = 2, type = "text", style = "default", title = "r.achieved_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
+r.achieved_s.sum <- stargazer(mi3.side, mi3.maxi, mi3.mand, mi3.pala, digits = 2, type = "text", style = "default", title = "r.achieved_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
 ```
 
 ## Side
@@ -609,7 +609,7 @@ class(mi4.pala) <- "lmerMod"
 
 ```{r}
 #| echo: false
-lum_s.sum <- stargazer(mi4.side, mi4.mand, mi4.maxi, mi4.pala, digits = 2, type = "text", style = "default", title = "lum_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
+lum_s.sum <- stargazer(mi4.side, mi4.maxi, mi4.mand, mi4.pala, digits = 2, type = "text", style = "default", title = "lum_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
 ```
 
 ## Side
@@ -766,7 +766,7 @@ class(mi5.pala) <- "lmerMod"
 
 ```{r}
 #| echo: false
-S9_s.sum <- stargazer(mi5.side, mi5.mand, mi5.maxi, mi5.pala, digits = 2,
+S9_s.sum <- stargazer(mi5.side, mi5.maxi, mi5.mand, mi5.pala, digits = 2,
                       type = "text", style = "default", title = "S9_s Mixed models (Estimate + (Std. Error)", column.labels = c("Side", "Maxilla", "Mandible", "Palate"))
 ```
 

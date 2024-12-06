@@ -9,7 +9,7 @@ editor: visual
 Open .RData file "data.RData"
 
 ```{r}
-load(../data.RData)
+load(../data_revised.RData)
 
 ```
 
