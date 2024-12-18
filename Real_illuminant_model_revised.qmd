@@ -1,9 +1,10 @@
 ---
 toc: true
 toc-depth: 3
-title: "Mixed model analysis - summary Bright and Dark (REALL ILLUMINANT)"
+title: "Mixed model analysis - summary (IDEAL ILLUMINANT)"
 format: html
-editor: visual
+editor_options:
+    chunk_output_type: console
 ---
 
 Open .RData file "data.RData"
